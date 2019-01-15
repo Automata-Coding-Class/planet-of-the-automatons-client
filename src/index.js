@@ -1,14 +1,39 @@
 require('dotenv').config();
-const { prompt } = require('inquirer');
+const fs = require('fs');
+const path = require('path');
 const logger = require('./logger.js');
+const {prompt} = require('inquirer');
 const authenticate = require('./authentication').authenticate;
 const createSocketManager = require('./socket-connections/socket-manager');
 const bot = require('../bot');
 
 // require(path.join(path.dirname(require.main.filename), '../package.json')).name ||
-process.env.APP_NAME = process.env.PROCESS_NAME/* || require.main.filename*/;
 
 logger.info(`process ${process.pid} launched. NODE_ENV = ${process.env.NODE_ENV}`);
+
+function saveEnvironmentVariables(userResponses) {
+  // determine if the .env file already exists
+  const envFilePath = path.join(__dirname, '../.env');
+  const envData = {};
+  if (fs.existsSync(envFilePath)) {
+    const envfile = require('envfile');
+    Object.assign(envData, envfile.parseFileSync(envFilePath));
+  }
+  envData.DEFAULT_HOSTNAME = userResponses.serverAddress;
+  envData.DEFAULT_PORT = userResponses.serverPort;
+  envData.DEFAULT_USERNAME = userResponses.username;
+  if (envData.PROCESS_NAME === undefined) {
+    envData.PROCESS_NAME = process.env.APP_NAME;
+  }
+  // if it does, parse it
+  // if it does not, create a container object
+  // populate the container / reconciling differences between the new input and old
+  // write the file to disk
+  fs.writeFileSync(envFilePath, Object.entries(envData).reduce((envStr, entry) => {
+    envStr += `${entry[0]}=${entry[1]}\n`;
+    return envStr;
+  }, ''));
+}
 
 const run = async () => {
   showStartMenu()
@@ -28,6 +53,7 @@ const run = async () => {
     })
     .then(collatedAnswers => {
       logger.info(`collatedAnswers: %o`, collatedAnswers);
+      saveEnvironmentVariables(collatedAnswers);
       return authenticate(collatedAnswers)
         .then(loginResponse => {
           return Object.assign({}, loginResponse, collatedAnswers);
@@ -37,10 +63,12 @@ const run = async () => {
       logger.info(`login response: %o`, data);
       const socketManager = createSocketManager(`http://${data.serverAddress}:${data.serverPort}`);
       return socketManager.openAllConnections(data.token)
-        .then(() => { return socketManager; })
+        .then(() => {
+          return socketManager;
+        })
     })
     .then(response => {
-      logger.info(`well, there you have it: %o`, response);
+      logger.info(`connected`);
     }, reason => logger.error(`reason: %s`, reason.message))
 }
 
@@ -96,6 +124,9 @@ function showLoginMenu() {
     name: 'username',
     message: ('what nickname would you like to use?') + ' (letters and numbers only, start with a letter, between 3 and 32 characters)'
   };
+  if(process.env.DEFAULT_USERNAME !== undefined) {
+    loginMenu.default = process.env.DEFAULT_USERNAME;
+  }
   return prompt(loginMenu)
     .then(answers => {
       if (!/^[a-z0-9]{3,32}$/i.test(answers.username)) {
@@ -107,13 +138,13 @@ function showLoginMenu() {
         // return createChatConnection(answers.username);
       }
     });
-    // .then((socket) => {
-      //   if (socket) {
-      //     showMainMenu(socket);
-      //   } else {
-      //     //showStartMenu();
-      //   }
-    // });
+  // .then((socket) => {
+  //   if (socket) {
+  //     showMainMenu(socket);
+  //   } else {
+  //     //showStartMenu();
+  //   }
+  // });
 }
 
 function showMainMenu(socket) {
