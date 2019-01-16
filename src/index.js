@@ -21,7 +21,21 @@ function saveEnvironmentVariables(userResponses) {
   }
   envData.DEFAULT_HOSTNAME = userResponses.serverAddress;
   envData.DEFAULT_PORT = userResponses.serverPort;
-  envData.DEFAULT_USERNAME = userResponses.username;
+  // setting allowMultipleInstances to true is intended for development purposes,
+  // so that individual user data will not collide
+  let allowMultipleInstances = false;
+  try {
+    allowMultipleInstances = Boolean(JSON.parse(envData['ALLOW_MULTIPLE_INSTANCES']));
+  } catch {
+    // do nothing; JSON error is taken implicitly as equivalent to "allowMultipleInstance = false"
+  } finally {
+    console.log(`envData.ALLOW_MULTIPLE_INSTANCES: ${allowMultipleInstances} (${typeof allowMultipleInstances})`);
+    if (!allowMultipleInstances) {
+      envData.DEFAULT_USERNAME = userResponses.username;
+    } else {
+      delete envData.DEFAULT_USERNAME;
+    }
+  }
   if (envData.PROCESS_NAME === undefined) {
     envData.PROCESS_NAME = process.env.APP_NAME;
   }
@@ -124,7 +138,7 @@ function showLoginMenu() {
     name: 'username',
     message: ('what nickname would you like to use?') + ' (letters and numbers only, start with a letter, between 3 and 32 characters)'
   };
-  if(process.env.DEFAULT_USERNAME !== undefined) {
+  if (process.env.DEFAULT_USERNAME !== undefined) {
     loginMenu.default = process.env.DEFAULT_USERNAME;
   }
   return prompt(loginMenu)
