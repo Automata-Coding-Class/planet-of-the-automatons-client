@@ -6,12 +6,12 @@ module.exports = function createCoreSocketConnection(serverAddress) {
 
   let socket;
   const createConnection = async function (namespace, authToken) {
-    logger.info(`connecting to host address '${serverAddress}' with namespace '${namespace}'`);
+    logger.debug(`connecting to host address '${serverAddress}' with namespace '${namespace}'`);
     socket = await SocketClient(`${serverAddress}/${namespace}`
       , {query: {token: authToken}}
       );
     socket.on('connect', () => {
-      logger.info(`(${namespace})socket connection event received`);
+      logger.debug(`(${namespace})socket connection event received`);
     })
     return socket;
   };

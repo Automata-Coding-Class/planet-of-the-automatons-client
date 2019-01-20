@@ -5,11 +5,10 @@ const logger = require('./logger.js');
 const {prompt} = require('inquirer');
 const authenticate = require('./authentication').authenticate;
 const createSocketManager = require('./socket-connections/socket-manager');
-const bot = require('../bot');
 
 // require(path.join(path.dirname(require.main.filename), '../package.json')).name ||
 
-logger.info(`process ${process.pid} launched. NODE_ENV = ${process.env.NODE_ENV}`);
+logger.debug(`process ${process.pid} launched. NODE_ENV = ${process.env.NODE_ENV}`);
 
 function saveEnvironmentVariables(userResponses) {
   // determine if the .env file already exists
@@ -29,7 +28,7 @@ function saveEnvironmentVariables(userResponses) {
   } catch {
     // do nothing; JSON error is taken implicitly as equivalent to "allowMultipleInstance = false"
   } finally {
-    console.log(`envData.ALLOW_MULTIPLE_INSTANCES: ${allowMultipleInstances} (${typeof allowMultipleInstances})`);
+    logger.debug(`envData.ALLOW_MULTIPLE_INSTANCES: ${allowMultipleInstances} (${typeof allowMultipleInstances})`);
     if (!allowMultipleInstances) {
       envData.DEFAULT_USERNAME = userResponses.username;
     } else {
@@ -59,14 +58,14 @@ const run = async () => {
         return Promise.reject('exiting');
       })
     .then(connectionAnswers => {
-      logger.info(`answers: %o`, connectionAnswers);
+      logger.debug(`answers: %o`, connectionAnswers);
       return showLoginMenu()
         .then(loginAnswers => {
           return Object.assign({}, connectionAnswers, loginAnswers);
         });
     })
     .then(collatedAnswers => {
-      logger.info(`collatedAnswers: %o`, collatedAnswers);
+      logger.debug(`collatedAnswers: %o`, collatedAnswers);
       saveEnvironmentVariables(collatedAnswers);
       return authenticate(collatedAnswers)
         .then(loginResponse => {
@@ -74,7 +73,7 @@ const run = async () => {
         })
     })
     .then(data => {
-      logger.info(`login response: %o`, data);
+      logger.debug(`login response: %o`, data);
       const socketManager = createSocketManager(`http://${data.serverAddress}:${data.serverPort}`);
       return socketManager.openAllConnections(data.token)
         .then(() => {
@@ -82,7 +81,8 @@ const run = async () => {
         })
     })
     .then(response => {
-      logger.info(`connected`);
+      logger.debug(`connected`);
+      console.log('connected.\bPress ^C (control-C) to quit');
     }, reason => logger.error(`reason: %s`, reason.message))
 }
 
@@ -146,19 +146,9 @@ function showLoginMenu() {
       if (!/^[a-z0-9]{3,32}$/i.test(answers.username)) {
         throw new Error('not a valid username. please try again.');
       } else {
-        logger.info(`success case: %s`, answers.username);
         return answers;
-        // createEventConnection(answers.username);
-        // return createChatConnection(answers.username);
       }
     });
-  // .then((socket) => {
-  //   if (socket) {
-  //     showMainMenu(socket);
-  //   } else {
-  //     //showStartMenu();
-  //   }
-  // });
 }
 
 function showMainMenu(socket) {
@@ -218,7 +208,7 @@ function quit(socket) {
 
 run()
   .then(() => {
-    logger.info(`run loop completed`);
+    logger.debug(`run loop completed`);
   });
 
 module.exports = {

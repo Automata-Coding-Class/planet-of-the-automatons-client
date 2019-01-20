@@ -1,18 +1,11 @@
 const logger = require('./src/logger');
+const { chooseRandomItem } = require('./src/utils');
 const cardinalPoints = ['up', 'right', 'down', 'left'];
 
 function determineMove() {
-  return {
-    type: 'move',
-    direction: cardinalPoints[Math.floor(Math.random() * cardinalPoints.length)]
-  };
+  return chooseRandomItem(cardinalPoints);
 }
 
-const processFrame = function(frame) {
-  logger.info(`will process frame: ${JSON.stringify(frame)}`);
-  return {action: determineMove()};
-};
-
 module.exports = {
-  processFrame: processFrame
+  determineMove: determineMove
 };

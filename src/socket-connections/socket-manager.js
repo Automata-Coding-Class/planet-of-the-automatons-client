@@ -7,7 +7,7 @@ module.exports = function createSocketManager(serverAddress) {
     eventConnection: createEventConnection(serverAddress)
   };
   const openAllConnections = async function(authToken) {
-    logger.info(`will open all connections using token '%s'`, authToken);
+    logger.debug(`will open all connections using token '%s'`, authToken);
     await connections.eventConnection.createConnection(authToken);
     return true;
   }

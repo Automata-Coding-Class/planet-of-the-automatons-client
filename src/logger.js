@@ -88,7 +88,7 @@ const logger = createLogger({
 // If we're not in production then log to the `console` with the format:
 // `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
 
-logger.info(`NODE_ENV=${process.env.NODE_ENV}`);
+logger.debug(`NODE_ENV=${process.env.NODE_ENV}`);
 if (process.env.NODE_ENV !== 'production') {
   logger.add(new transports.Console({
     format: singleLineFormat, // format.simple(),
@@ -100,9 +100,9 @@ module.exports = logger;
 module.exports.stream = {
   write: function(message/*, encoding*/){
     if(process.env.NODE_ENV === 'production') {
-      logger.info(message.replace(/\s*\n+\s*/, ' '));
+      logger.debug(message.replace(/\s*\n+\s*/, ' '));
     } else {
-      logger.info(message.replace(/\s*\n+\s*/, ' '));
+      logger.debug(message.replace(/\s*\n+\s*/, ' '));
     }
   }
 };

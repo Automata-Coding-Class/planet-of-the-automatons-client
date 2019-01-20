@@ -16,9 +16,15 @@ module.exports = function createEventConnection(serverAddress) {
   };
 
   function processFrameAndRespond(socket, frame) {
-    const response = playerBot.processFrame(frame);
-    logger.info(`responding to frame id '${frame.frameId}' with ${JSON.stringify(response)}`);
-    socket.emit('frameResponse', {frameId: frame.frameId, response: response});
+    const response = playerBot.determineMove(frame);
+    let processedResponse;
+    if(typeof response  === 'string') {
+      processedResponse = {action: {type: 'move', direction: response}};
+    } else if(response !== undefined && response.type !== undefined) {
+      processedResponse = {action: Object.assign({}, response)};
+    }
+    logger.debug(`responding to frame id '${frame.frameId}' with ${JSON.stringify(response)}`);
+    socket.emit('frameResponse', {frameId: frame.frameId, response: processedResponse});
   }
 
   function initializeGameState() {
@@ -28,27 +34,27 @@ module.exports = function createEventConnection(serverAddress) {
 
   const addSocketEvents = (socket) => {
     socket.on('newGameCreated', gameParameters => {
-      logger.info('newGameCreated: %s', gameParameters);
+      logger.debug('newGameCreated: %s', gameParameters);
       initializeGameState();
       coreConnection.dispatchEvent('newGameCreated', gameParameters);
     });
     socket.on('newFrame', frame => {
-      logger.info(`received a new frame: %o`, frame);
+      logger.debug(`received a new frame: %o`, frame);
       if(frame.data === undefined) {
         socket.emit('frameResponse', {frameId: frame.frameId});
       } else if(paused) {
-        logger.info(`paused, will not process frame`);
+        logger.debug(`paused, will not process frame`);
         pendingFrame = frame;
       } else {
         processFrameAndRespond(socket, frame);
       }
     });
     socket.on('gamePaused', () => {
-      logger.info(`game paused`);
+      logger.debug(`game paused`);
       paused = true;
     });
     socket.on('gameResumed', () => {
-      logger.info(`game resumed`);
+      logger.debug(`game resumed`);
       paused = false;
       if(pendingFrame !== undefined) {
         processFrameAndRespond(socket, pendingFrame);
@@ -56,7 +62,7 @@ module.exports = function createEventConnection(serverAddress) {
       }
     });
     socket.on('gameStopped', () => {
-      logger.info(`game stopped`);
+      logger.debug(`game stopped`);
       paused = false;
       if(pendingFrame !== undefined) {
         processFrameAndRespond(socket, pendingFrame);
