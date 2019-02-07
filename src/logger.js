@@ -61,7 +61,7 @@ const prettyPrintedFormat = combine(
 const fileDateStampPattern = 'YYYY-MM-DD'; // 'YYYY-MM-DDTHH' or 'YYYY-MM-DDTHH:mm' also feasible
 
 const logger = createLogger({
-  level: 'info',
+  level: process.env.NODE_ENV === 'dev' ? 'debug' : 'info',
   format: singleLineFormat,
   transports: [
     //

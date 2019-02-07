@@ -9,6 +9,9 @@ const createSocketManager = require('./socket-connections/socket-manager');
 // require(path.join(path.dirname(require.main.filename), '../package.json')).name ||
 
 logger.debug(`process ${process.pid} launched. NODE_ENV = ${process.env.NODE_ENV}`);
+logger.debug(`SERVER_ADDRESS = ${process.env.SERVER_ADDRESS}`);
+logger.debug(`SERVER_PORT = ${process.env.SERVER_PORT}`);
+logger.debug(`USERNAME = ${process.env.USERNAME}`);
 
 function saveEnvironmentVariables(userResponses) {
   // determine if the .env file already exists
@@ -35,7 +38,7 @@ function saveEnvironmentVariables(userResponses) {
       delete envData.DEFAULT_USERNAME;
     }
   }
-  if (envData.PROCESS_NAME === undefined) {
+  if (envData.PROCESS_NAME === undefined) {2
     envData.PROCESS_NAME = process.env.APP_NAME;
   }
   // if it does, parse it
@@ -48,43 +51,53 @@ function saveEnvironmentVariables(userResponses) {
   }, ''));
 }
 
-const run = async () => {
-  showStartMenu()
-    .then(() => {
-        return showConnectionMenu();
-      },
-      () => {
-        quit();
-        return Promise.reject('exiting');
-      })
-    .then(connectionAnswers => {
-      logger.debug(`answers: %o`, connectionAnswers);
-      return showLoginMenu()
-        .then(loginAnswers => {
-          return Object.assign({}, connectionAnswers, loginAnswers);
-        });
-    })
-    .then(collatedAnswers => {
-      logger.debug(`collatedAnswers: %o`, collatedAnswers);
-      saveEnvironmentVariables(collatedAnswers);
-      return authenticate(collatedAnswers)
-        .then(loginResponse => {
-          return Object.assign({}, loginResponse, collatedAnswers);
-        })
-    })
-    .then(data => {
-      logger.debug(`login response: %o`, data);
-      const socketManager = createSocketManager(`http://${data.serverAddress}:${data.serverPort}`);
-      return socketManager.openAllConnections(data.token)
+const authenticateAndConnect = options => {
+  return authenticate(options)
+    .then(loginResponse => {
+      const socketManager = createSocketManager(`http://${options.serverAddress}:${options.serverPort}`);
+      return socketManager.openAllConnections(loginResponse.token)
         .then(() => {
           return socketManager;
         })
     })
-    .then(response => {
+    .then(() => {
       logger.debug(`connected`);
       console.log('connected.\bPress ^C (control-C) to quit');
-    }, reason => logger.error(`reason: %s`, reason.message))
-}
+    },
+      reason => logger.error(`reason: %s`, reason.message));
+};
+
+const run = async () => {
+  if(process.env.NODE_ENV === 'dev' && process.env.SERVER_ADDRESS !== undefined && process.env.SERVER_PORT !== undefined && process.env.USERNAME !== undefined) {
+    logger.debug(`using environment configuration for authentication and connection`);
+    authenticateAndConnect({
+      serverAddress: process.env.SERVER_ADDRESS,
+      serverPort: process.env.SERVER_PORT,
+      username: process.env.USERNAME
+    });
+  } else {
+    showStartMenu()
+      .then(() => {
+          return showConnectionMenu();
+        },
+        () => {
+          quit();
+          return Promise.reject('exiting');
+        })
+      .then(connectionAnswers => {
+        logger.debug(`answers: %o`, connectionAnswers);
+        return showLoginMenu()
+          .then(loginAnswers => {
+            return Object.assign({}, connectionAnswers, loginAnswers);
+          });
+      })
+      .then(collatedAnswers => {
+        logger.debug(`collatedAnswers: %o`, collatedAnswers);
+        saveEnvironmentVariables(collatedAnswers);
+        return authenticateAndConnect(collatedAnswers);
+      });
+  }
+};
 
 function showStartMenu() {
   const startMenu = {

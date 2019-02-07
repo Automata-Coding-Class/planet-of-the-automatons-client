@@ -6,6 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node $NODE_DEBUG_OPTION src/index.js interactive",
+    "debug": "NODE_ENV=dev npm start",
     "help": "node src/index.js --help",
     "test": "jest --watch"
   },
